@@ -1,0 +1,14 @@
+{
+  "name": "@webrpg/game-shell",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Framework-free floating game shell for WebRPG's playable RPG Maker entries",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node --test tests/browser.test.mjs",
+    "check": "node --check shell.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
+}
