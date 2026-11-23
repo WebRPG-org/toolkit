@@ -1,6 +1,6 @@
 {
   "name": "@webrpg/game-shell",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Framework-free floating game shell for WebRPG's playable RPG Maker entries",
   "scripts": {

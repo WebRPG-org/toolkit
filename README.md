@@ -11,11 +11,11 @@ The injecting application is [WebRPG-org/index](https://github.com/WebRPG-org/in
 
 ## Published static assets
 
-The immutable v1 URLs are:
+The immutable v1.0.1 URLs are:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.0.0/shell.css">
-<script src="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.0.0/shell.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.0.1/shell.css">
+<script src="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.0.1/shell.js"></script>
 ```
 
 The script element **must appear after** the `#webrpg-shell` and `#webrpg-touch-controls` markup and **before** the game's startup scripts, so initialization sees the DOM and preserves the entry's existing behavior. Pin to a version tag; do not use `@main` for production.
@@ -29,6 +29,7 @@ The script element **must appear after** the `#webrpg-shell` and `#webrpg-touch-
 - Fullscreen targets the document root so the fixed overlay remains visible. Rotation relies on browser support and does not transform or reflow the game Canvas.
 - Supports pointer capture, multitouch release on blur/visibility changes, reduced motion and a logo fallback.
 - CSS selectors are scoped to the two WebRPG roots; no game-level selectors or framework globals.
+- On legacy mobile games without `width=device-width`, the shell applies overlay-only viewport compensation; the game's viewport and Canvas remain unchanged. On compact phones, touch targets use a tighter layout.
 
 The virtual controller sends synthetic keyboard events to match RPG Maker's default keyboard mapper. Some third-party plugins may reject untrusted events and require further compatibility work.
 

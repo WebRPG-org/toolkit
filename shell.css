@@ -201,8 +201,8 @@
 #webrpg-touch-controls *,#webrpg-touch-controls *::before,#webrpg-touch-controls *::after {box-sizing:border-box}
 #webrpg-touch-controls .wr-pad-cluster {position:relative;pointer-events:none;flex-shrink:0}
 #webrpg-touch-controls .wr-dpad {
-  display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);
-  gap:1px;place-items:center;
+  display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);
+  gap:2px;place-items:center;
 }
 #webrpg-touch-controls .wr-dpad::after {
   content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -210,12 +210,12 @@
 }
 #webrpg-touch-controls .wr-pad-key {
   appearance:none;-webkit-appearance:none;
-  width:44px;height:44px;display:grid;place-items:center;
+  width:56px;height:56px;display:grid;place-items:center;
   padding:0!important;margin:0!important;
-  border:1px solid var(--wr-pad-border)!important;border-radius:12px!important;
+  border:1px solid var(--wr-pad-border)!important;border-radius:15px!important;
   color:var(--wr-pad-ink)!important;background:var(--wr-pad-glass)!important;
   backdrop-filter:blur(10px);box-shadow:0 2px 9px #0002!important;
-  font:inherit;cursor:pointer;pointer-events:auto;touch-action:none;
+  font:inherit;font-size:16px;cursor:pointer;pointer-events:auto;touch-action:none;
   -webkit-tap-highlight-color:transparent;
 }
 #webrpg-touch-controls .wr-pad-key[aria-pressed="true"] {
@@ -229,26 +229,31 @@
 #webrpg-touch-controls .wr-dpad [data-wr-key="right"] {grid-column:3;grid-row:2}
 #webrpg-touch-controls .wr-dpad [data-wr-key="down"] {grid-column:2;grid-row:3}
 #webrpg-touch-controls .wr-pad-actions {
-  display:grid;grid-template-columns:repeat(3,46px);
-  grid-template-rows:42px 54px;column-gap:5px;row-gap:8px;
+  display:grid;grid-template-columns:repeat(3,56px);
+  grid-template-rows:54px 64px;column-gap:6px;row-gap:8px;
   align-items:center;justify-items:center;padding-bottom:5px;
 }
 #webrpg-touch-controls .wr-pad-actions .wr-pad-key {
-  width:46px;height:46px;border-radius:50%!important;font-size:13px;
+  width:56px;height:56px;border-radius:50%!important;font-size:15px;
 }
-#webrpg-touch-controls .wr-pad-actions [data-wr-key="pageup"] {grid-column:1;grid-row:1;width:42px;height:42px;font-size:11px}
-#webrpg-touch-controls .wr-pad-actions [data-wr-key="pagedown"] {grid-column:3;grid-row:1;width:42px;height:42px;font-size:11px}
-#webrpg-touch-controls .wr-pad-actions [data-wr-key="shift"] {grid-column:1;grid-row:2;font-size:10px}
+#webrpg-touch-controls .wr-pad-actions [data-wr-key="pageup"] {grid-column:1;grid-row:1;width:52px;height:52px;font-size:13px}
+#webrpg-touch-controls .wr-pad-actions [data-wr-key="pagedown"] {grid-column:3;grid-row:1;width:52px;height:52px;font-size:13px}
+#webrpg-touch-controls .wr-pad-actions [data-wr-key="shift"] {grid-column:1;grid-row:2;font-size:12px}
 #webrpg-touch-controls .wr-pad-actions [data-wr-key="cancel"] {grid-column:2;grid-row:2}
-#webrpg-touch-controls .wr-pad-actions [data-wr-key="ok"] {grid-column:3;grid-row:2;width:52px;height:52px;font-size:16px}
-@media(max-width:360px) {
-  #webrpg-touch-controls {left:8px;right:8px;gap:4px}
-  #webrpg-touch-controls .wr-dpad {grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px)}
-  #webrpg-touch-controls .wr-dpad .wr-pad-key {width:40px;height:40px}
-  #webrpg-touch-controls .wr-pad-actions {grid-template-columns:repeat(3,43px);column-gap:3px}
-  #webrpg-touch-controls .wr-pad-actions .wr-pad-key {width:43px;height:43px}
-  #webrpg-touch-controls .wr-pad-actions [data-wr-key="ok"] {width:47px;height:47px}
+#webrpg-touch-controls .wr-pad-actions [data-wr-key="ok"] {grid-column:3;grid-row:2;width:64px;height:64px;font-size:18px}
+/* Physical screen width is detected by JS: @media width can be 980px on
+   legacy RPG Maker viewport pages even when the real phone is 320px. */
+#webrpg-touch-controls[data-wr-compact="true"] {left:8px;right:8px;gap:4px}
+#webrpg-touch-controls[data-wr-compact="true"] .wr-dpad {
+  grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:1px
 }
+#webrpg-touch-controls[data-wr-compact="true"] .wr-dpad .wr-pad-key {width:46px;height:46px;font-size:14px}
+#webrpg-touch-controls[data-wr-compact="true"] .wr-pad-actions {
+  grid-template-columns:repeat(3,46px);grid-template-rows:46px 52px;column-gap:3px;row-gap:6px
+}
+#webrpg-touch-controls[data-wr-compact="true"] .wr-pad-actions .wr-pad-key {width:46px;height:46px;font-size:13px}
+#webrpg-touch-controls[data-wr-compact="true"] .wr-pad-actions [data-wr-key="ok"] {width:52px;height:52px;font-size:16px}
+#webrpg-touch-controls[data-wr-compact="true"] .wr-pad-actions [data-wr-key="shift"] {font-size:11px}
 @media(prefers-reduced-motion:reduce) {
   #webrpg-shell,#webrpg-shell *,#webrpg-shell::before,
   #webrpg-touch-controls .wr-pad-key {transition-duration:.01ms!important;animation-duration:.01ms!important}

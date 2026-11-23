@@ -23,13 +23,32 @@
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
   const isMobile = () => coarsePointer.matches && Math.min(screen.width, screen.height) <= 900;
-  const target = (edge = side, y = margin) => ({
-    x: edge === "right" ? Math.max(margin, innerWidth - size - margin) : margin,
-    y: clamp(y, margin, Math.max(margin, innerHeight - size - margin)),
-  });
+  // RPG Maker's legacy viewport ("user-scalable=no" without width=device-width)
+  // uses a 980px layout viewport that Safari shrinks to fit the device.
+  // Correct only our overlay: never alter the game's viewport or Canvas.
+  let uiScale = 1;
+  const physicalViewportWidth = () =>
+    Math.max(1, (window.visualViewport?.width || innerWidth) *
+      (window.visualViewport?.scale || 1));
+  const viewportSize = () => ({ width: innerWidth / uiScale, height: innerHeight / uiScale });
+  function updateUiScale() {
+    const next = isMobile() ? clamp(innerWidth / physicalViewportWidth(), 1, 3.5) : 1;
+    if (Math.abs(next - uiScale) < .01) return;
+    uiScale = next;
+    shell.style.zoom = next === 1 ? "" : String(next);
+    if (controls) controls.style.zoom = next === 1 ? "" : String(next);
+  }
+  const target = (edge = side, y = margin) => {
+    const { width, height } = viewportSize();
+    return {
+      x: edge === "right" ? Math.max(margin, width - size - margin) : margin,
+      y: clamp(y, margin, Math.max(margin, height - size - margin)),
+    };
+  };
   const rect = () => {
     const r = shell.getBoundingClientRect();
-    return { left: r.left, top: r.top, width: r.width, height: r.height };
+    return { left: r.left / uiScale, top: r.top / uiScale,
+      width: r.width / uiScale, height: r.height / uiScale };
   };
   const setRect = (r) => {
     for (const key of ["left", "top", "width", "height"]) shell.style[key] = r[key] + "px";
@@ -48,8 +67,9 @@
     phase = next; shell.dataset.phase = next; updateMenuDirection();
   };
   const put = (x, y) => {
-    pos = { x: clamp(x, margin, Math.max(margin, innerWidth - size - margin)),
-      y: clamp(y, margin, Math.max(margin, innerHeight - size - margin)) };
+    const { width, height } = viewportSize();
+    pos = { x: clamp(x, margin, Math.max(margin, width - size - margin)),
+      y: clamp(y, margin, Math.max(margin, height - size - margin)) };
     shell.style.setProperty("--wr-x", pos.x + "px");
     shell.style.setProperty("--wr-y", pos.y + "px");
     updateMenuDirection();
@@ -187,7 +207,8 @@
   });
   summary.addEventListener("pointermove", (e) => {
     if (!drag || drag.id !== e.pointerId) return;
-    const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+    const dx = (e.clientX - drag.startX) / uiScale;
+    const dy = (e.clientY - drag.startY) / uiScale;
     if (!drag.moved && Math.hypot(dx, dy) > 7) {
       drag.moved = true; setPhase("dragging");
     }
@@ -198,7 +219,7 @@
     const moved = drag.moved; drag = null;
     if (!moved) return;
     suppressClickUntil = performance.now() + 400;
-    side = pos.x + size / 2 >= innerWidth / 2 ? "right" : "left";
+    side = pos.x + size / 2 >= viewportSize().width / 2 ? "right" : "left";
     const to = target(side, pos.y), from = rect();
     setPhase("snapping"); setRect(from);
     const snap = shell.animate([
@@ -362,6 +383,9 @@
   }
   function updateMobile() {
     const mobile = isMobile();
+    updateUiScale();
+    if (controls) controls.dataset.wrCompact =
+      String(mobile && physicalViewportWidth() < 390);
     shell.dataset.mobileMode = String(mobile);
     if (padButton) padButton.hidden = !mobile;
     if (rotationButton) rotationButton.hidden = !mobile;
@@ -398,13 +422,15 @@
       try { screen.orientation.unlock(); } catch {}
     }
   });
-  window.addEventListener("resize", () => {
+  function syncViewport() {
     updateMobile();
     if (phase === "docked") {
       const p = target(side,pos.y);
       put(p.x,p.y);
     }
-  });
+  }
+  window.addEventListener("resize", syncViewport);
+  window.visualViewport?.addEventListener?.("resize", syncViewport);
   updateMobile(); updateRotation();
   try { playIntro(); } catch (err) {
     // Never block the original game if a browser API behaves unexpectedly.

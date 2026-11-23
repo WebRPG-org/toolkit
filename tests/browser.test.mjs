@@ -110,3 +110,54 @@ test("mobile: virtual gamepad is opt-in and sends paired RPG Maker key events", 
     await context.close();
   } finally { await browser.close(); }
 });
+
+test("legacy iPhone viewport: overlay has physical touch targets without changing game viewport", async () => {
+  const browser = await launch();
+  try {
+    for (const deviceWidth of [320, 440]) {
+      const context = await browser.newContext({
+        viewport: { width: deviceWidth, height: 860 }, isMobile: true,
+        hasTouch: true, deviceScaleFactor: 3,
+      });
+      const page = await context.newPage();
+      const errors = [];
+      await mount(page, errors);
+      await page.waitForFunction(() =>
+        document.getElementById("webrpg-shell").dataset.phase === "docked",
+        { timeout: 5500 });
+      await page.locator("#webrpg-shell > summary").click();
+      await page.locator('[data-wr-action="gamepad"]').click();
+      const metrics = await page.evaluate(() => {
+        const vw = window.visualViewport;
+        const s = vw.scale;
+        const rect = (selector) =>
+          document.querySelector(selector).getBoundingClientRect();
+        const shell = rect("#webrpg-shell");
+        const up = rect('[data-wr-key="up"]');
+        const ok = rect('[data-wr-key="ok"]');
+        const right = rect("#webrpg-touch-controls .wr-pad-actions");
+        return {
+          layoutWidth: innerWidth,
+          visibleWidth: vw.width * s,
+          floatingSize: shell.width * s,
+          dpadSize: up.width * s,
+          confirmSize: ok.width * s,
+          leftEdge: up.left * s,
+          rightEdge: right.right * s,
+          compact: document.getElementById("webrpg-touch-controls").dataset.wrCompact,
+          originalViewport: document.querySelector('meta[name="viewport"]')?.content ?? null,
+        };
+      });
+      assert.ok(metrics.layoutWidth > metrics.visibleWidth * 1.5,
+        "fixture must exercise the 980px legacy layout viewport");
+      assert.ok(metrics.floatingSize >= 44, JSON.stringify(metrics));
+      assert.ok(metrics.dpadSize >= (deviceWidth < 390 ? 46 : 56) - 1, JSON.stringify(metrics));
+      assert.ok(metrics.confirmSize >= (deviceWidth < 390 ? 52 : 64) - 1, JSON.stringify(metrics));
+      assert.ok(metrics.rightEdge <= metrics.visibleWidth + 1, JSON.stringify(metrics));
+      assert.equal(metrics.compact, String(deviceWidth < 390));
+      assert.equal(metrics.originalViewport, null, "game meta must not be changed");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+  } finally { await browser.close(); }
+});
