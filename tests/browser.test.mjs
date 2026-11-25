@@ -18,13 +18,13 @@ const fixture = `<!doctype html><html><head><meta charset="utf-8">
 <title>Game fixture</title><style>html,body{margin:0;background:#244358}
 #game{width:100vw;height:100vh;background:#244358}</style></head>
 <body><main id="game">Existing game</main>
-<details id="webrpg-shell" data-phase="intro" data-menu-direction="down">
+<details id="webrpg-shell" data-game="fixture-game" data-instance="fixture-instance" data-phase="intro" data-menu-direction="down">
   <summary aria-label="Open WebRPG menu">
     <span class="wr-logo"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='19' fill='%23999'/%3E%3C/svg%3E" alt=""><span class="wr-logo-fallback">WR</span></span>
     <span class="wr-label"><strong>WebRPG</strong><small>Fixture</small></span>
   </summary>
   <nav class="wr-menu" aria-label="WebRPG navigation">
-    <a class="wr-link" href="https://webrpg.org/" title="Home">Home</a>
+    <a class="wr-link" data-wr-nav="catalog" href="https://webrpg.org/" title="Home">Home</a>
     ${button("fullscreen")}${button("rotation", true)}${button("gamepad", true)}
   </nav><span class="wr-notice" role="status" hidden></span>
 </details>
@@ -159,5 +159,34 @@ test("legacy iPhone viewport: overlay has physical touch targets without changin
       assert.deepEqual(errors, []);
       await context.close();
     }
+  } finally { await browser.close(); }
+});
+
+test("analytics: navigation, engine readiness and one foreground milestone", async () => {
+  const browser = await launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
+    await page.clock.install();
+    await page.setContent(fixture);
+    await page.addStyleTag({ path: css });
+    await page.evaluate(() => {
+      window.__events = [];
+      window.insightflare = { track: (name, data) => window.__events.push({ name, data }) };
+      window.Utils = { RPGMAKER_NAME: "MZ" };
+      window.Scene_Map = class Scene_Map { isStarted() { return true; } };
+      window.SceneManager = { _scene: new window.Scene_Map() };
+      document.querySelector("[data-wr-nav]").addEventListener("click", e => e.preventDefault());
+    });
+    await page.addScriptTag({ path: js });
+    await page.clock.runFor(1200);
+    await page.locator("#game").click({ position: { x: 500, y: 250 } });
+    await page.clock.runFor(62000);
+    await page.locator("#webrpg-shell > summary").click();
+    await page.locator("[data-wr-nav]").click();
+    const events = await page.evaluate(() => window.__events);
+    assert.equal(events.filter(e => e.name === "game_ready").length, 1);
+    assert.equal(events.filter(e => e.name === "game_engaged" && e.data.milestone === 60).length, 1);
+    assert.ok(events.some(e => e.name === "game_menu_open"));
+    assert.ok(events.some(e => e.name === "game_return_catalog" && e.data.gameSlug === "fixture-game" && e.data.instanceId === "fixture-instance"));
   } finally { await browser.close(); }
 });

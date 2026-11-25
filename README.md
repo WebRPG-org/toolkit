@@ -11,11 +11,11 @@ The injecting application is [WebRPG-org/index](https://github.com/WebRPG-org/in
 
 ## Published static assets
 
-The immutable v1.0.1 URLs are:
+The immutable v1.1.0 URLs are:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.0.1/shell.css">
-<script src="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.0.1/shell.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.1.0/shell.css">
+<script src="https://cdn.jsdelivr.net/gh/WebRPG-org/toolkit@v1.1.0/shell.js"></script>
 ```
 
 The script element **must appear after** the `#webrpg-shell` and `#webrpg-touch-controls` markup and **before** the game's startup scripts, so initialization sees the DOM and preserves the entry's existing behavior. Pin to a version tag; do not use `@main` for production.
@@ -44,3 +44,13 @@ npm test
 On Windows you may set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to a local Chrome/Edge executable to avoid downloading Chromium for local checks.
 
 The repository intentionally contains only game-shell assets, tests and documentation. It does not include the HTML lab UI, game data, or a stand-alone deployment system.
+
+
+## Optional analytics
+
+Uses an existing window.insightflare tracker only; no additional network endpoint.
+The injector supplies data-game, data-instance and data-wr-nav. Navigation and
+tool interactions are low-frequency events. MV/MZ readiness is detected without
+patching the engine; engagement milestones (60/300/900/1800 seconds) count only
+focused visible map/battle time with recent trusted input. Unknown engines are
+not reported as ready. No keystrokes, input text, or raw error messages are sent.

@@ -21,6 +21,85 @@
   let suppressClickUntil = 0, padEnabled = false, notifyTimer = 0;
   let requestedOrientation = null;
 
+  // Optional analytics: never install a second tracker or bypass privacy settings.
+  const toolkitVersion = "1.1.0";
+  const context = () => ({
+    gameSlug: shell.dataset.game || undefined,
+    instanceId: shell.dataset.instance || undefined,
+    toolkitVersion,
+  });
+  function track(name, data = {}) {
+    try {
+      const api = window.insightflare;
+      if (typeof api?.track !== "function") return false;
+      api.track(name, { ...context(), ...data });
+      return true;
+    } catch { return false; }
+  }
+  // Navigation intent only; actual destination arrival remains a page view.
+  shell.addEventListener("click", (e) => {
+    const link = e.target instanceof Element && e.target.closest("a[data-wr-nav]");
+    if (!link || !shell.contains(link)) return;
+    const destination = link.dataset.wrNav;
+    if (destination === "catalog" || destination === "detail")
+      track(destination === "catalog" ? "game_return_catalog" : "game_return_detail",
+        { source: "toolkit" });
+  });
+
+  // Observe the engine without patching its methods. Title screen readiness is
+  // distinct from active gameplay; unknown engines are not counted as ready.
+  function engineState() {
+    try {
+      const engine = window.Utils?.RPGMAKER_NAME;
+      const manager = window.SceneManager;
+      const scene = manager?._scene;
+      if (!["MV", "MZ"].includes(engine) || !scene) return null;
+      const started = typeof scene.isStarted === "function" ? scene.isStarted() : manager._sceneStarted === true;
+      const sceneName = scene.constructor?.name;
+      if (!started || sceneName === "Scene_Boot" || sceneName === "Scene_Splash") return null;
+      return { engine, playing: typeof window.Scene_Map === "function" && scene instanceof window.Scene_Map ||
+        typeof window.Scene_Battle === "function" && scene instanceof window.Scene_Battle };
+    } catch { return null; }
+  }
+  const thresholds = [60, 300, 900, 1800];
+  let readyReported = false, activeMs = 0, lastTick = performance.now();
+  let lastInput = -Infinity, milestoneIndex = 0, stopped = false;
+  const startedAt = lastTick;
+  function noteInput(e) {
+    if (!e.isTrusted || document.hidden || shell.contains(e.target)) return;
+    lastInput = performance.now();
+  }
+  document.addEventListener("pointerdown", noteInput, true);
+  document.addEventListener("keydown", noteInput, true);
+  let analyticsTimer = 0;
+  function stopAnalytics() {
+    stopped = true;
+    clearInterval(analyticsTimer);
+    document.removeEventListener("pointerdown", noteInput, true);
+    document.removeEventListener("keydown", noteInput, true);
+  }
+  function observeGame() {
+    if (stopped) return;
+    const now = performance.now(), delta = Math.max(0, Math.min(1500, now - lastTick));
+    lastTick = now;
+    const state = engineState();
+    if (!readyReported && state) readyReported = track("game_ready", { engine: state.engine });
+    if (!readyReported && now - startedAt > 120000) { stopAnalytics(); return; }
+    if (!readyReported || !state?.playing || document.hidden || !document.hasFocus() ||
+        now - lastInput > 120000) return;
+    activeMs += delta;
+    while (milestoneIndex < thresholds.length && activeMs >= thresholds[milestoneIndex] * 1000) {
+      const milestone = thresholds[milestoneIndex];
+      if (!track("game_engaged", { engine: state.engine, activeSeconds: Math.floor(activeMs / 1000), milestone })) break;
+      milestoneIndex++;
+    }
+    if (milestoneIndex === thresholds.length) stopAnalytics();
+  }
+  analyticsTimer = setInterval(observeGame, 1000);
+  document.addEventListener("visibilitychange", () => { lastTick = performance.now(); });
+  window.addEventListener("pagehide", (e) => { if (!e.persisted) stopAnalytics(); });
+  window.addEventListener("pageshow", () => { lastTick = performance.now(); });
+
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
   const isMobile = () => coarsePointer.matches && Math.min(screen.width, screen.height) <= 900;
   // RPG Maker's legacy viewport ("user-scalable=no" without width=device-width)
@@ -181,6 +260,7 @@
   }
   shell.addEventListener("toggle", () => {
     if (shell.open) {
+      track("game_menu_open", { source: "toolkit" });
       clearTimeout(timer);
       if (phase === "moving") pauseForMenu();
     } else if (phase === "paused") {
@@ -258,11 +338,14 @@
     fullscreenButton.hidden = false;
     fullscreenButton.addEventListener("click", async () => {
       shell.open = false;
+      const wasActive = fullScreenActive();
       try {
         if (fullScreenActive()) await document.exitFullscreen();
         else if (!document.fullscreenElement && document.documentElement.requestFullscreen)
           await document.documentElement.requestFullscreen();
       } catch { notify("Fullscreen unavailable in this browser"); }
+      const active = fullScreenActive();
+      track("game_fullscreen", { enabled: active, success: active !== wasActive });
       updateFullscreen();
     });
     document.addEventListener("fullscreenchange", updateFullscreen);
@@ -375,6 +458,7 @@
     controls.addEventListener("contextmenu", e => e.preventDefault());
     padButton?.addEventListener("click", () => {
       setPad(!padEnabled); shell.open = false;
+      track("game_virtual_controls", { enabled: padEnabled });
     });
     window.addEventListener("blur",releaseAll);
     window.addEventListener("pagehide",releaseAll);
@@ -405,6 +489,7 @@
     shell.open=false;
     if (!isMobile()) return;
     if (typeof screen.orientation?.lock !== "function") {
+      track("game_rotation", { success: false, reason: "unsupported" });
       notify("Rotate your device manually"); return;
     }
     const landscape = (screen.orientation?.type || "").startsWith("landscape");
@@ -413,7 +498,11 @@
       if (!document.fullscreenElement && document.documentElement.requestFullscreen)
         await document.documentElement.requestFullscreen();
       await screen.orientation.lock(requestedOrientation);
-    } catch { notify("Screen orientation lock unavailable"); }
+      track("game_rotation", { success: true, orientation: requestedOrientation });
+    } catch {
+      track("game_rotation", { success: false, orientation: requestedOrientation, reason: "lock_failed" });
+      notify("Screen orientation lock unavailable");
+    }
     updateRotation();
   });
   screen.orientation?.addEventListener?.("change",updateRotation);
